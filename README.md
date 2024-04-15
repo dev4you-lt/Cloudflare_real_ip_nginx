@@ -25,7 +25,7 @@ The `update-cloudflare-ips.sh` script fetches the latest IPv4 and IPv6 addresses
 
 1. Clone the repository to your desired location:
    ```bash
-   git clone https://github.com/yourusername/cloudflare-nginx-ip-updater.git
+   git clone https://github.com/dev4you-lt/cloudflare-nginx-ip-updater.git
    ```
 2. Navigate to the directory containing the script:
    ```bash
