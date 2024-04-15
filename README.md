@@ -1,5 +1,5 @@
 
-# Cloudflare IP Configuration for Nginx
+# Cloudflare Real IP Configuration for Nginx
 
 This repository contains a Bash script that automates the process of updating your Nginx configuration to include Cloudflare’s trusted IP ranges. This script ensures that Nginx correctly identifies the real IP address of visitors that come through Cloudflare, improving both the accuracy of logging and security measures like IP-based access control.
 
