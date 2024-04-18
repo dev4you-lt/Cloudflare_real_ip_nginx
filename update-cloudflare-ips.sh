@@ -1,37 +1,87 @@
 #!/bin/bash
 
-# Set the path where the Cloudflare configuration will be saved
+set -e
+
 CLOUDFLARE_CONF_PATH="/etc/nginx/cf.conf"
 
-# Create a temporary file to accumulate the configuration
-TEMP_FILE=$(mktemp)
+CF_BASEURL="https://www.cloudflare.com/"
+CF_IP4="$CF_BASEURL/ips-v4"
+CF_IP6="$CF_BASEURL/ips-v6"
 
-# Begin writing the Cloudflare configurations to the temporary file
-echo "# Cloudflare IP addresses" > $TEMP_FILE
-echo "" >> $TEMP_FILE
+CF_IP4_MIN_COUNT=4
+CF_IP6_MIN_COUNT=2
 
-# Fetch and append IPv4 addresses to the configuration
-echo "# IPv4 addresses" >> $TEMP_FILE
-curl -s -L https://www.cloudflare.com/ips-v4 | while read -r ip; do
-    echo "set_real_ip_from $ip;" >> $TEMP_FILE
-done
+TEMP_FILE="$(mktemp /tmp/nginx_cf_XXXXXXX.conf)"
 
-# Separate IPv4 and IPv6 sections for clarity
-echo "" >> $TEMP_FILE
+die() {
+    echo "$1" >&2
+    exit 1
+}
 
-# Fetch and append IPv6 addresses to the configuration
-echo "# IPv6 addresses" >> $TEMP_FILE
-curl -s -L https://www.cloudflare.com/ips-v6 | while read -r ip; do
-    echo "set_real_ip_from $ip;" >> $TEMP_FILE
-done
+warn() {
+    echo "Warning: $1" >&2
+}
 
-# Add the real_ip_header directive at the end of the configuration
-echo "" >> $TEMP_FILE
-echo "real_ip_header CF-Connecting-IP;" >> $TEMP_FILE
+fetch() {
+    local url="$1"
 
-# Replace the old Cloudflare configuration file with the new one
-# This operation is atomic, ensuring no partial configurations
-mv $TEMP_FILE $CLOUDFLARE_CONF_PATH
+    if ! curl -s -L "$1"
+    then
+        die "Error fetching URL $url"
+    fi
+}
 
-# Test Nginx configuration for syntax errors and reload if successful
-nginx -t && systemctl reload nginx
+validate_ip() {
+    validate_ip4 "$1" || validate_ip6 "$1"
+}
+
+validate_ip6() {
+    [[ "$1" =~ ^[0-9a-fA-F/:]+$ ]]
+}
+
+validate_ip4() {
+    [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$ ]]
+}
+
+readarray -t ipv4 < <(fetch "$CF_IP4")
+readarray -t ipv6 < <(fetch "$CF_IP6")
+
+if [[ "${#ipv4[@]}" -lt "$CF_IP4_MIN_COUNT" ]]
+then
+    warn "too few IPv4 addresses. Might be an error at CF endpoint."
+fi
+
+if [[ "${#ipv6[@]}" -lt "$CF_IP6_MIN_COUNT" ]]
+then
+    warn "too few IPv6 addresses. Might be an error at CF endpoint."
+fi
+
+{
+    echo "# Cloudflare IP addresses"
+    echo ""
+
+    for ip in "${ipv4[@]}" "" "${ipv6[@]}" ""
+    do
+        [[ -z "$ip" ]] && echo && continue
+        if ! validate_ip "$ip"
+        then
+           warn "$ip doesn't look like a valid IP. Skipping."
+           continue
+        fi
+        echo "set_real_ip_from $ip;"
+    done
+
+    echo "real_ip_header CF-Connecting-IP;"
+} > "$TEMP_FILE"
+
+if ! mv "$TEMP_FILE" "$CLOUDFLARE_CONF_PATH"
+then
+    die "Unable to rename the config file."
+fi
+
+if ! nginx -t
+then
+    die "Invalid syntax."
+fi
+
+systemctl reload nginx
