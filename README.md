@@ -27,14 +27,6 @@ The `update-cloudflare-ips.sh` script fetches the latest IPv4 and IPv6 addresses
    ```bash
    git clone https://github.com/dev4you-lt/cloudflare-nginx-ip-updater.git
    ```
-2. Navigate to the directory containing the script:
-   ```bash
-   cd cloudflare-nginx-ip-updater
-   ```
-3. Make the script executable:
-   ```bash
-   chmod +x update-cloudflare-ips.sh
-   ```
 
 ## Usage
 

@@ -27,7 +27,7 @@ jobs:
           sudo systemctl enable --now nginx
 
       - name: Run script
-        run: sudo bash update-cloudflare-ips.sh
+        run: sudo ./update-cloudflare-ips.sh
 
       - name: Show generated file
         run: sudo cat /etc/nginx/cf.conf
