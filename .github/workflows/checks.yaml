@@ -1,0 +1,34 @@
+---
+name: Check
+on:
+  - push
+
+jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+
+  test_run:
+    name: "Check script"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install nginx
+        run: >
+          sudo apt-get -y update &&
+          sudo apt-get -y install nginx &&
+          sudo systemctl enable --now nginx
+
+      - name: Run script
+        run: sudo bash update-cloudflare-ips.sh
+
+      - name: Show generated file
+        run: sudo cat /etc/nginx/cf.conf
+
